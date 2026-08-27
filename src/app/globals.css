@@ -1,0 +1,39 @@
+@import "tailwindcss";
+
+/* InKontrol brand tokens — see docs/brand (cool teal/slate palette, Inter only) */
+@theme {
+  --color-primary: #369aac;
+  --color-primary-light: #93c8d2;
+  --color-secondary: #7a969c;
+  --color-ink: #4b5256;
+  --color-border-soft: #dce0e3;
+  --color-accent-warm: #eae295;
+  --color-canvas: #f8fafa;
+  --color-surface: #ffffff;
+  --color-success: #8fcb9e;
+  --color-error: #f0a8a0;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, sans-serif;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-feature-settings: "tnum";
+}
+
+/* Motion: settle-into-place only (brand guide §6) */
+@keyframes settle {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-settle {
+  animation: settle 240ms ease-out;
+}
