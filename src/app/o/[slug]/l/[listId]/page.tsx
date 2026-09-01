@@ -3,6 +3,10 @@ import { notFound } from "next/navigation";
 import { requireOrg } from "@/lib/tenant";
 import * as tasks from "@/lib/repos/tasks";
 import { createTaskAction, createCustomFieldAction } from "@/lib/task-actions";
+import { createAutomationAction, deleteAutomationAction } from "@/lib/notify-actions";
+import { listMembers } from "@/lib/repos/orgs";
+import { withOrg } from "@/lib/db";
+import { STATUSES, PRIORITIES } from "@/lib/task-ui";
 import { ListView } from "@/components/views/list-view";
 import { BoardView } from "@/components/views/board-view";
 import { CalendarView } from "@/components/views/calendar-view";
@@ -25,7 +29,16 @@ export default async function ListPage({
   const ctx = await requireOrg(slug);
   const list = await tasks.getList(ctx, listId);
   if (!list) notFound();
-  const items = await tasks.getTasksForList(ctx, listId);
+  const [items, members, rules] = await Promise.all([
+    tasks.getTasksForList(ctx, listId),
+    listMembers(ctx),
+    withOrg(ctx.organizationId, (tx) =>
+      tx.automationRule.findMany({
+        where: { organizationId: ctx.organizationId, listId },
+        orderBy: { createdAt: "asc" },
+      })
+    ),
+  ]);
 
   return (
     <div className="animate-settle">
@@ -79,7 +92,75 @@ export default async function ListPage({
         )}
       </div>
 
-      <details className="mt-10 max-w-xl text-sm">
+      <details className="mt-10 max-w-2xl text-sm">
+        <summary className="cursor-pointer text-secondary hover:text-ink">
+          Automations ({rules.length})
+        </summary>
+        <div className="mt-2 rounded-lg border border-border-soft bg-surface p-4">
+          {rules.length > 0 && (
+            <ul className="mb-3 space-y-1">
+              {rules.map((r) => (
+                <li key={r.id} className="flex items-center gap-2 text-secondary">
+                  <span>
+                    <span className="font-medium text-ink">{r.name}</span>: when status becomes{" "}
+                    {r.triggerValue.toLowerCase().replaceAll("_", " ")} →{" "}
+                    {r.actionType === "set_priority"
+                      ? `set priority ${r.actionValue.toLowerCase()}`
+                      : `${r.actionType === "assign_user" ? "assign" : "notify"} ${
+                          members.find((m) => m.userId === r.actionValue)?.user.name ?? "member"
+                        }`}
+                  </span>
+                  <form action={deleteAutomationAction.bind(null, slug, listId, r.id)}>
+                    <button className="text-xs text-secondary hover:text-ink">remove</button>
+                  </form>
+                </li>
+              ))}
+            </ul>
+          )}
+          <form action={createAutomationAction.bind(null, slug, listId)} className="flex flex-wrap items-center gap-2">
+            <input
+              name="name"
+              required
+              placeholder="Rule name"
+              className="rounded-md border border-border-soft px-2 py-1.5 outline-none focus:border-primary"
+            />
+            <span className="text-xs text-secondary">when status becomes</span>
+            <select name="triggerValue" className="rounded-md border border-border-soft bg-surface px-2 py-1.5">
+              {STATUSES.map((s) => (
+                <option key={s.value} value={s.value}>
+                  {s.label}
+                </option>
+              ))}
+            </select>
+            <select name="actionType" className="rounded-md border border-border-soft bg-surface px-2 py-1.5">
+              <option value="notify_user">notify member (pick below)</option>
+              <option value="assign_user">assign member (pick below)</option>
+              <option value="set_priority">set priority (pick below)</option>
+            </select>
+            <select name="actionValue" className="rounded-md border border-border-soft bg-surface px-2 py-1.5">
+              <optgroup label="Members">
+                {members.map((m) => (
+                  <option key={m.userId} value={m.userId}>
+                    {m.user.name ?? m.user.email}
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label="Priorities">
+                {PRIORITIES.map((p) => (
+                  <option key={p.value} value={p.value}>
+                    {p.label}
+                  </option>
+                ))}
+              </optgroup>
+            </select>
+            <button className="rounded-md bg-primary px-3 py-1.5 font-medium text-white hover:opacity-90">
+              Add rule
+            </button>
+          </form>
+        </div>
+      </details>
+
+      <details className="mt-4 max-w-xl text-sm">
         <summary className="cursor-pointer text-secondary hover:text-ink">
           Custom fields ({list.customFields.length})
         </summary>

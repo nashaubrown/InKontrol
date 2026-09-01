@@ -7,6 +7,8 @@ import type { CustomFieldType, TaskPriority, TaskStatus } from "@prisma/client";
 import { requireOrg } from "@/lib/tenant";
 import * as tasks from "@/lib/repos/tasks";
 import { logActivity } from "@/lib/repos/collab";
+import { emitEvent } from "@/lib/notify";
+import { runStatusAutomations } from "@/lib/automations";
 
 const titleSchema = z.string().trim().min(1).max(300);
 const statusSchema = z.enum(["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"]);
@@ -63,6 +65,7 @@ export async function setTaskStatusAction(orgSlug: string, taskId: string, statu
   const parsed = statusSchema.parse(status);
   const task = await tasks.updateTask(ctx, taskId, { status: parsed as TaskStatus });
   await logActivity(ctx, { taskId, type: "changed_status", detail: parsed.toLowerCase() });
+  await runStatusAutomations(ctx, task, parsed);
   revalidatePath(listPath(orgSlug, task.listId));
 }
 
@@ -83,6 +86,17 @@ export async function toggleAssigneeAction(
 ) {
   const ctx = await requireOrg(orgSlug);
   await tasks.setAssignee(ctx, taskId, idSchema.parse(userId), assigned);
+  if (assigned) {
+    const task = await tasks.getTask(ctx, taskId);
+    if (task) {
+      await emitEvent(ctx, {
+        type: "task_assigned",
+        recipientUserIds: [userId],
+        title: `You were assigned: ${task.title}`,
+        linkPath: `/o/${orgSlug}/t/${taskId}`,
+      });
+    }
+  }
   revalidatePath(`/o/${orgSlug}/t/${taskId}`);
 }
 

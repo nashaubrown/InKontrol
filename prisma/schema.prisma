@@ -38,6 +38,9 @@ model User {
   activity      ActivityLogEntry[]
   attachments   Attachment[]
   docs          Doc[]
+  notifications     Notification[]
+  notificationPrefs NotificationPreference[]
+  telegramLink      TelegramLink?
 }
 
 // Auth.js adapter tables
@@ -89,6 +92,9 @@ model Organization {
   activityLog       ActivityLogEntry[]
   attachments       Attachment[]
   docs              Doc[]
+  notifications     Notification[]
+  notificationPrefs NotificationPreference[]
+  automationRules   AutomationRule[]
 }
 
 model Membership {
@@ -189,6 +195,7 @@ model List {
   tasks        Task[]
   customFields CustomField[]
   docs         Doc[]
+  automationRules AutomationRule[]
 
   @@index([organizationId])
   @@index([spaceId])
@@ -390,4 +397,75 @@ model Doc {
   createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
   @@index([organizationId, updatedAt])
+}
+
+// ---- Phase 1.4: Notifications + automation ----
+
+enum NotificationChannel {
+  IN_APP
+  EMAIL
+  TELEGRAM
+  WHATSAPP
+}
+
+model Notification {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  type           String
+  title          String
+  body           String   @default("")
+  linkPath       String   @default("")
+  readAt         DateTime?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, readAt])
+  @@index([organizationId])
+}
+
+model NotificationPreference {
+  id             String              @id @default(cuid())
+  organizationId String
+  userId         String
+  eventType      String
+  channel        NotificationChannel
+  enabled        Boolean             @default(true)
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId, eventType, channel])
+  @@index([organizationId])
+}
+
+model TelegramLink {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  chatId    String?
+  linkCode  String   @unique
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AutomationRule {
+  id             String   @id @default(cuid())
+  organizationId String
+  listId         String
+  name           String
+  triggerType    String // status_becomes
+  triggerValue   String // e.g. DONE
+  actionType     String // set_priority | assign_user | notify_user
+  actionValue    String // priority value or userId
+  enabled        Boolean  @default(true)
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  list         List         @relation(fields: [listId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([listId, enabled])
 }

@@ -5,11 +5,44 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { requireOrg } from "@/lib/tenant";
 import * as collab from "@/lib/repos/collab";
+import * as tasks from "@/lib/repos/tasks";
+import { listMembers } from "@/lib/repos/orgs";
+import { emitEvent } from "@/lib/notify";
 
 export async function addCommentAction(orgSlug: string, taskId: string, formData: FormData) {
   const ctx = await requireOrg(orgSlug);
   const body = z.string().trim().min(1).max(10_000).parse(formData.get("body"));
   await collab.addComment(ctx, taskId, body);
+
+  const [task, members] = await Promise.all([tasks.getTask(ctx, taskId), listMembers(ctx)]);
+  if (task) {
+    const mentioned = collab.findMentionedMembers(
+      body,
+      members.map((m) => ({ userId: m.userId, name: m.user.name, email: m.user.email }))
+    );
+    const preview = body.slice(0, 140);
+    if (mentioned.length > 0) {
+      await emitEvent(ctx, {
+        type: "comment_mention",
+        recipientUserIds: mentioned.map((m) => m.userId),
+        title: `You were mentioned on: ${task.title}`,
+        body: preview,
+        linkPath: `/o/${orgSlug}/t/${taskId}`,
+      });
+    }
+    const assigneeIds = task.assignees
+      .map((a) => a.userId)
+      .filter((id) => !mentioned.some((m) => m.userId === id));
+    if (assigneeIds.length > 0) {
+      await emitEvent(ctx, {
+        type: "comment_on_task",
+        recipientUserIds: assigneeIds,
+        title: `New comment on: ${task.title}`,
+        body: preview,
+        linkPath: `/o/${orgSlug}/t/${taskId}`,
+      });
+    }
+  }
   revalidatePath(`/o/${orgSlug}/t/${taskId}`);
 }
 

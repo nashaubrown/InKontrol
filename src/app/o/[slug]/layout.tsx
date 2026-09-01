@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { requireOrg } from "@/lib/tenant";
 import { getHierarchy } from "@/lib/repos/hierarchy";
+import { withOrg } from "@/lib/db";
 import { signOutAction } from "@/lib/actions";
 import { Sidebar } from "@/components/sidebar";
 
@@ -13,7 +14,14 @@ export default async function OrgLayout({
 }) {
   const { slug } = await params;
   const ctx = await requireOrg(slug);
-  const workspaces = await getHierarchy(ctx);
+  const [workspaces, unread] = await Promise.all([
+    getHierarchy(ctx),
+    withOrg(ctx.organizationId, (tx) =>
+      tx.notification.count({
+        where: { organizationId: ctx.organizationId, userId: ctx.userId, readAt: null },
+      })
+    ),
+  ]);
 
   return (
     <div className="flex min-h-screen">
@@ -34,6 +42,9 @@ export default async function OrgLayout({
             </Link>
             <Link href={`/o/${slug}/members`} className="hover:text-primary">
               Members
+            </Link>
+            <Link href={`/o/${slug}/inbox`} className="hover:text-primary">
+              Inbox{unread > 0 ? ` (${unread})` : ""}
             </Link>
             <Link href={`/o/${slug}/docs`} className="hover:text-primary">
               Docs
