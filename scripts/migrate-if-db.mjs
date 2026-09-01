@@ -13,7 +13,9 @@ if (process.env.DATABASE_URL) {
     .sort();
   for (const f of files) {
     console.log(`Applying RLS policies: ${f}`);
-    execSync(`npx prisma db execute --file ${join(rlsDir, f)}`, { stdio: "inherit" });
+    execSync(`npx prisma db execute --schema prisma/schema.prisma --file ${join(rlsDir, f)}`, {
+      stdio: "inherit",
+    });
   }
 } else {
   console.log("DATABASE_URL not set — skipping prisma migrate deploy");
