@@ -64,3 +64,49 @@ export async function rewriteInBrandVoice(input: {
   });
   return response.content.find((b) => b.type === "text")?.text?.trim() ?? input.text;
 }
+
+// ---- Phase 5.1: cross-platform assistant (tightly scoped first release) ----
+
+export async function generateSubtasks(input: {
+  title: string;
+  description: string;
+}): Promise<string[]> {
+  const response = await client().messages.create({
+    model: "claude-opus-5",
+    max_tokens: 1500,
+    system:
+      'Break the task into 3-7 concrete subtasks. Respond with only valid JSON: {"subtasks": ["...", ...]}. Each subtask is one short actionable sentence.',
+    messages: [
+      { role: "user", content: `Task: ${input.title}\n\nDescription:\n${input.description || "(none)"}` },
+    ],
+  });
+  const text = response.content.find((b) => b.type === "text")?.text ?? "{}";
+  const parsed = JSON.parse(text.replace(/^```(json)?|```$/g, "").trim()) as { subtasks?: string[] };
+  return (parsed.subtasks ?? []).slice(0, 7).map((s) => String(s).slice(0, 300));
+}
+
+export async function summarizeThread(input: {
+  title: string;
+  description: string;
+  comments: { author: string; body: string }[];
+}): Promise<string> {
+  const response = await client().messages.create({
+    model: "claude-opus-5",
+    max_tokens: 1000,
+    system:
+      "Summarize this task thread for someone catching up: current state, decisions made, open questions, and who owes what. Short sentences. Plain text, max 120 words.",
+    messages: [
+      {
+        role: "user",
+        content: [
+          `Task: ${input.title}`,
+          input.description && `Description: ${input.description.slice(0, 2000)}`,
+          `Comments:\n${input.comments.map((c) => `${c.author}: ${c.body.slice(0, 500)}`).join("\n")}`,
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+      },
+    ],
+  });
+  return response.content.find((b) => b.type === "text")?.text?.trim() ?? "";
+}

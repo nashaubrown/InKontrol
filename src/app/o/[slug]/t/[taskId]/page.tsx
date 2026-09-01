@@ -15,6 +15,8 @@ import {
 } from "@/lib/task-actions";
 import { AutoSubmitSelect } from "@/components/auto-submit-select";
 import { AttachmentUpload } from "@/components/attachment-upload";
+import { TaskAi } from "@/components/task-ai";
+import { aiConfigured } from "@/lib/ai";
 import * as p3 from "@/lib/repos/phase3";
 import { startTimerAction, stopTimerAction, addManualEntryAction } from "@/lib/phase3-actions";
 import { addCommentAction, deleteAttachmentAction } from "@/lib/collab-actions";
@@ -247,6 +249,12 @@ export default async function TaskPage({
           </button>
         </form>
       </section>
+
+      {aiConfigured() && (
+        <section className="mt-6">
+          <TaskAi orgSlug={slug} taskId={taskId} />
+        </section>
+      )}
 
       <section className="mt-8">
         <h2 className="text-sm font-semibold">

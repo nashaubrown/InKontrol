@@ -49,6 +49,8 @@ model User {
   timeEntries       TimeEntry[]
   goals             Goal[]
   forms             Form[]
+  webhookEndpoints  WebhookEndpoint[]
+  apiKeys           ApiKey[]
 }
 
 // Auth.js adapter tables
@@ -84,7 +86,7 @@ model Organization {
   slug         String   @unique
   brandColor   String?
   brandLogoUrl String?
-  brandVoice   String  @default("")
+  brandVoice   String   @default("")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -125,6 +127,8 @@ model Organization {
   adCampaignSnapshots  AdCampaignSnapshot[]
   trackedKeywords      TrackedKeyword[]
   keywordRankSnapshots KeywordRankSnapshot[]
+  webhookEndpoints     WebhookEndpoint[]
+  apiKeys              ApiKey[]
 }
 
 model Membership {
@@ -849,6 +853,43 @@ model KeywordRankSnapshot {
 
   organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   keyword      TrackedKeyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+// ---- Phase 5: Integrations ecosystem ----
+
+model WebhookEndpoint {
+  id             String   @id @default(cuid())
+  organizationId String
+  url            String
+  // HMAC secret shown once at creation; payloads signed with X-InKontrol-Signature
+  secret         String
+  events         String[] @default([])
+  enabled        Boolean  @default(true)
+  createdById    String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model ApiKey {
+  id             String    @id @default(cuid())
+  organizationId String
+  name           String
+  keyHash        String    @unique
+  prefix         String // first 8 chars, for display
+  scope          String    @default("read") // read | read_write
+  lastUsedAt     DateTime?
+  revokedAt      DateTime?
+  createdById    String
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
 }

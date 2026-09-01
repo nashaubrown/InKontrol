@@ -85,3 +85,57 @@ export async function saveBrandVoiceAction(orgSlug: string, formData: FormData) 
   });
   revalidatePath(`/o/${orgSlug}/social/ai`);
 }
+
+export async function generateSubtasksAction(
+  orgSlug: string,
+  taskId: string,
+  _prev: AiState,
+  _formData: FormData
+): Promise<AiState> {
+  const ctx = await requireOrg(orgSlug);
+  if (!aiConfigured()) return { error: "AI assistance needs ANTHROPIC_API_KEY configured." };
+  if (!checkRateLimit(`ai:${ctx.userId}`, 15, 60_000)) return { error: "Slow down a little." };
+  const { generateSubtasks } = await import("@/lib/ai");
+  const tasksRepo = await import("@/lib/repos/tasks");
+  const task = await tasksRepo.getTask(ctx, taskId);
+  if (!task) return { error: "Task not found" };
+  try {
+    const titles = await generateSubtasks({ title: task.title, description: task.description });
+    for (const title of titles) {
+      await tasksRepo.createTask(ctx, { listId: task.listId, title, parentTaskId: taskId });
+    }
+    revalidatePath(`/o/${orgSlug}/t/${taskId}`);
+    return {};
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "AI request failed" };
+  }
+}
+
+export async function summarizeThreadAction(
+  orgSlug: string,
+  taskId: string,
+  _prev: AiState,
+  _formData: FormData
+): Promise<AiState> {
+  const ctx = await requireOrg(orgSlug);
+  if (!aiConfigured()) return { error: "AI assistance needs ANTHROPIC_API_KEY configured." };
+  if (!checkRateLimit(`ai:${ctx.userId}`, 15, 60_000)) return { error: "Slow down a little." };
+  const { summarizeThread } = await import("@/lib/ai");
+  const tasksRepo = await import("@/lib/repos/tasks");
+  const collab = await import("@/lib/repos/collab");
+  const [task, comments] = await Promise.all([
+    tasksRepo.getTask(ctx, taskId),
+    collab.getComments(ctx, taskId),
+  ]);
+  if (!task) return { error: "Task not found" };
+  try {
+    const summary = await summarizeThread({
+      title: task.title,
+      description: task.description,
+      comments: comments.map((c) => ({ author: c.author.name ?? c.author.email, body: c.body })),
+    });
+    return { rewritten: summary };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : "AI request failed" };
+  }
+}

@@ -8,11 +8,16 @@ import * as collab from "@/lib/repos/collab";
 import * as tasks from "@/lib/repos/tasks";
 import { listMembers } from "@/lib/repos/orgs";
 import { emitEvent } from "@/lib/notify";
+import { deliverWebhooks } from "@/lib/webhooks";
 
 export async function addCommentAction(orgSlug: string, taskId: string, formData: FormData) {
   const ctx = await requireOrg(orgSlug);
   const body = z.string().trim().min(1).max(10_000).parse(formData.get("body"));
   await collab.addComment(ctx, taskId, body);
+  await deliverWebhooks(ctx.organizationId, "comment.created", {
+    taskId,
+    body: body.slice(0, 500),
+  });
 
   const [task, members] = await Promise.all([tasks.getTask(ctx, taskId), listMembers(ctx)]);
   if (task) {

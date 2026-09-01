@@ -29,9 +29,23 @@ activates when its env vars are set (see `.env.example`): email (Resend),
 Telegram, WhatsApp (Meta Cloud API), Google Drive/Dropbox import
 (`SECRETS_KEY` + OAuth app credentials), and Stripe billing.
 
-## Roadmap
+## Roadmap status
 
-Phase 1 (ClickUp-core) is complete: hierarchy, tasks + views, comments/docs/
-attachments, notifications + automations, templates + client portal, billing.
-Phase 2 (social scheduling + analytics) is in progress. The full plan lives in
-the project build brief.
+All five phases of the build brief are implemented:
+
+1. **ClickUp-core** — hierarchy, tasks + List/Board/Calendar views, comments,
+   Docs, attachments, notifications + automations, templates, client portal,
+   billing.
+2. **Metricool-core** — social accounts (demo adapters until platform approvals
+   land), composer with approval workflow, scheduling via cron, unified content
+   calendar, analytics, competitor tracking, client reports.
+3. **ClickUp-advanced** — time tracking, workload, goals/OKRs, intake forms,
+   dashboard. (Whiteboards/chat deferred per the brief's priority guidance.)
+4. **Metricool-advanced** — AI content assistance (brand voice), keyword rank
+   tracking; ads/website analytics models ready behind platform approvals.
+5. **Platform maturity** — outbound webhooks (HMAC-signed), public REST API
+   with scoped keys, PWA manifest, task AI assistant (subtasks + summaries).
+
+Real social publishing, WhatsApp, ads reporting, and SERP data each activate
+when their platform approval or vendor contract is added — the env vars are
+documented in `.env.example`.

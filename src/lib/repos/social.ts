@@ -4,6 +4,7 @@ import type { PostStatus, SocialPlatform } from "@prisma/client";
 import { prisma, withOrg } from "@/lib/db";
 import type { OrgContext } from "@/lib/tenant";
 import { getAdapter } from "@/lib/social/adapters";
+import { deliverWebhooks } from "@/lib/webhooks";
 
 export function listAccounts(ctx: OrgContext) {
   return withOrg(ctx.organizationId, (tx) =>
@@ -177,6 +178,11 @@ export async function publishTarget(targetId: string) {
         externalId: result.externalId,
         errorMessage: null,
       },
+    });
+    await deliverWebhooks(target.organizationId, "post.published", {
+      postId: target.postId,
+      account: target.socialAccount.handle,
+      platform: target.socialAccount.platform,
     });
   } catch (err) {
     await prisma.postTarget.update({

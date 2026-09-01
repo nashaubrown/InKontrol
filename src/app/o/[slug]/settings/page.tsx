@@ -19,9 +19,15 @@ export default async function SettingsPage({ params }: { params: Promise<{ slug:
   return (
     <div className="animate-settle max-w-2xl">
       <h1 className="text-2xl font-semibold tracking-tight">Settings</h1>
-      <p className="mt-1 text-sm">
+      <p className="mt-1 flex gap-4 text-sm">
         <Link href={`/o/${slug}/settings/notifications`} className="text-primary hover:underline">
-          Your notification settings →
+          Notification settings →
+        </Link>
+        <Link href={`/o/${slug}/settings/usage`} className="text-primary hover:underline">
+          Plan &amp; usage →
+        </Link>
+        <Link href={`/o/${slug}/settings/integrations`} className="text-primary hover:underline">
+          API &amp; webhooks →
         </Link>
       </p>
 

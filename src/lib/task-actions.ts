@@ -9,6 +9,7 @@ import * as tasks from "@/lib/repos/tasks";
 import { logActivity } from "@/lib/repos/collab";
 import { emitEvent } from "@/lib/notify";
 import { runStatusAutomations } from "@/lib/automations";
+import { deliverWebhooks } from "@/lib/webhooks";
 
 const titleSchema = z.string().trim().min(1).max(300);
 const statusSchema = z.enum(["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"]);
@@ -31,6 +32,11 @@ export async function createTaskAction(orgSlug: string, listId: string, formData
     dueDate: typeof due === "string" && due ? new Date(due) : null,
   });
   await logActivity(ctx, { taskId: task.id, type: "created_task", detail: title.slice(0, 120) });
+  await deliverWebhooks(ctx.organizationId, "task.created", {
+    taskId: task.id,
+    title: task.title,
+    listId,
+  });
   revalidatePath(listPath(orgSlug, listId));
 }
 
@@ -66,6 +72,11 @@ export async function setTaskStatusAction(orgSlug: string, taskId: string, statu
   const task = await tasks.updateTask(ctx, taskId, { status: parsed as TaskStatus });
   await logActivity(ctx, { taskId, type: "changed_status", detail: parsed.toLowerCase() });
   await runStatusAutomations(ctx, task, parsed);
+  await deliverWebhooks(ctx.organizationId, "task.status_changed", {
+    taskId,
+    title: task.title,
+    status: parsed,
+  });
   revalidatePath(listPath(orgSlug, task.listId));
 }
 
