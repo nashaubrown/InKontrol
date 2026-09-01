@@ -111,6 +111,12 @@ export default async function OrgLayout({
                 <Link href={`/o/${slug}/social`} className="hover:text-primary">
                   Social
                 </Link>
+                <Link href={`/o/${slug}/social/ai`} className="hover:text-primary">
+                  AI
+                </Link>
+                <Link href={`/o/${slug}/marketing`} className="hover:text-primary">
+                  Marketing
+                </Link>
                 <Link href={`/o/${slug}/docs`} className="hover:text-primary">
                   Docs
                 </Link>

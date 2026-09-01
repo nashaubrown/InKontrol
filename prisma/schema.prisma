@@ -84,42 +84,47 @@ model Organization {
   slug         String   @unique
   brandColor   String?
   brandLogoUrl String?
+  brandVoice   String  @default("")
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  memberships         Membership[]
-  invites             Invite[]
-  workspaces          Workspace[]
-  spaces              Space[]
-  folders             Folder[]
-  lists               List[]
-  tasks               Task[]
-  taskAssignees       TaskAssignee[]
-  customFields        CustomField[]
-  customFieldValues   CustomFieldValue[]
-  taskDependencies    TaskDependency[]
-  comments            Comment[]
-  activityLog         ActivityLogEntry[]
-  attachments         Attachment[]
-  docs                Doc[]
-  notifications       Notification[]
-  notificationPrefs   NotificationPreference[]
-  automationRules     AutomationRule[]
-  guestAccess         GuestAccess[]
-  templates           Template[]
-  integrationTokens   IntegrationToken[]
-  subscription        Subscription?
-  socialAccounts      SocialAccount[]
-  accountSnapshots    AccountAnalyticsSnapshot[]
-  socialPosts         SocialPost[]
-  postTargets         PostTarget[]
-  postAnalytics       PostAnalytics[]
-  competitorProfiles  CompetitorProfile[]
-  competitorSnapshots CompetitorSnapshot[]
-  timeEntries         TimeEntry[]
-  goals               Goal[]
-  keyResults          KeyResult[]
-  forms               Form[]
+  memberships          Membership[]
+  invites              Invite[]
+  workspaces           Workspace[]
+  spaces               Space[]
+  folders              Folder[]
+  lists                List[]
+  tasks                Task[]
+  taskAssignees        TaskAssignee[]
+  customFields         CustomField[]
+  customFieldValues    CustomFieldValue[]
+  taskDependencies     TaskDependency[]
+  comments             Comment[]
+  activityLog          ActivityLogEntry[]
+  attachments          Attachment[]
+  docs                 Doc[]
+  notifications        Notification[]
+  notificationPrefs    NotificationPreference[]
+  automationRules      AutomationRule[]
+  guestAccess          GuestAccess[]
+  templates            Template[]
+  integrationTokens    IntegrationToken[]
+  subscription         Subscription?
+  socialAccounts       SocialAccount[]
+  accountSnapshots     AccountAnalyticsSnapshot[]
+  socialPosts          SocialPost[]
+  postTargets          PostTarget[]
+  postAnalytics        PostAnalytics[]
+  competitorProfiles   CompetitorProfile[]
+  competitorSnapshots  CompetitorSnapshot[]
+  timeEntries          TimeEntry[]
+  goals                Goal[]
+  keyResults           KeyResult[]
+  forms                Form[]
+  adAccounts           AdAccount[]
+  adCampaignSnapshots  AdCampaignSnapshot[]
+  trackedKeywords      TrackedKeyword[]
+  keywordRankSnapshots KeywordRankSnapshot[]
 }
 
 model Membership {
@@ -785,6 +790,65 @@ model Form {
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   list         List         @relation(fields: [listId], references: [id], onDelete: Cascade)
   createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+// ---- Phase 4: Marketing analytics (vendor/approval-gated) + keyword tracking ----
+
+model AdAccount {
+  id              String   @id @default(cuid())
+  organizationId  String
+  platform        String // meta | google
+  name            String
+  encryptedTokens String?
+  createdAt       DateTime @default(now())
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  snapshots    AdCampaignSnapshot[]
+
+  @@index([organizationId])
+}
+
+model AdCampaignSnapshot {
+  id             String   @id @default(cuid())
+  organizationId String
+  adAccountId    String
+  date           DateTime @default(now())
+  campaignName   String
+  spend          Float
+  impressions    Int
+  clicks         Int
+  conversions    Int
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  adAccount    AdAccount    @relation(fields: [adAccountId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model TrackedKeyword {
+  id             String   @id @default(cuid())
+  organizationId String
+  keyword        String
+  targetUrl      String
+  createdAt      DateTime @default(now())
+
+  organization Organization          @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  snapshots    KeywordRankSnapshot[]
+
+  @@unique([organizationId, keyword, targetUrl])
+}
+
+model KeywordRankSnapshot {
+  id             String   @id @default(cuid())
+  organizationId String
+  keywordId      String
+  date           DateTime @default(now())
+  position       Int
+
+  organization Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  keyword      TrackedKeyword @relation(fields: [keywordId], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
 }
