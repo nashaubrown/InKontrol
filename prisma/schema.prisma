@@ -20,30 +20,32 @@ enum Role {
 }
 
 model User {
-  id           String       @id @default(cuid())
-  email        String       @unique
+  id           String   @id @default(cuid())
+  email        String   @unique
   name         String?
   passwordHash String?
   image        String?
-  createdAt    DateTime     @default(now())
-  updatedAt    DateTime     @updatedAt
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  memberships  Membership[]
-  invitesSent  Invite[]     @relation("InviteInviter")
-  sessions     Session[]
-  accounts     Account[]
-  createdTasks  Task[]         @relation("TaskCreator")
-  taskAssignees TaskAssignee[]
-  comments      Comment[]
-  activity      ActivityLogEntry[]
-  attachments   Attachment[]
-  docs          Doc[]
+  memberships       Membership[]
+  invitesSent       Invite[]                 @relation("InviteInviter")
+  sessions          Session[]
+  accounts          Account[]
+  createdTasks      Task[]                   @relation("TaskCreator")
+  taskAssignees     TaskAssignee[]
+  comments          Comment[]
+  activity          ActivityLogEntry[]
+  attachments       Attachment[]
+  docs              Doc[]
   notifications     Notification[]
   notificationPrefs NotificationPreference[]
   telegramLink      TelegramLink?
   guestAccess       GuestAccess[]
   templates         Template[]
   integrationTokens IntegrationToken[]
+  socialAccounts    SocialAccount[]
+  socialPosts       SocialPost[]
 }
 
 // Auth.js adapter tables
@@ -74,45 +76,52 @@ model Session {
 }
 
 model Organization {
-  id            String  @id @default(cuid())
-  name          String
-  slug          String  @unique
-  brandColor    String?
-  brandLogoUrl  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id           String   @id @default(cuid())
+  name         String
+  slug         String   @unique
+  brandColor   String?
+  brandLogoUrl String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  memberships Membership[]
-  invites     Invite[]
-  workspaces  Workspace[]
-  spaces      Space[]
-  folders     Folder[]
-  lists       List[]
-  tasks             Task[]
-  taskAssignees     TaskAssignee[]
-  customFields      CustomField[]
-  customFieldValues CustomFieldValue[]
-  taskDependencies  TaskDependency[]
-  comments          Comment[]
-  activityLog       ActivityLogEntry[]
-  attachments       Attachment[]
-  docs              Doc[]
-  notifications     Notification[]
-  notificationPrefs NotificationPreference[]
-  automationRules   AutomationRule[]
-  guestAccess       GuestAccess[]
-  templates         Template[]
-  integrationTokens IntegrationToken[]
-  subscription      Subscription?
+  memberships         Membership[]
+  invites             Invite[]
+  workspaces          Workspace[]
+  spaces              Space[]
+  folders             Folder[]
+  lists               List[]
+  tasks               Task[]
+  taskAssignees       TaskAssignee[]
+  customFields        CustomField[]
+  customFieldValues   CustomFieldValue[]
+  taskDependencies    TaskDependency[]
+  comments            Comment[]
+  activityLog         ActivityLogEntry[]
+  attachments         Attachment[]
+  docs                Doc[]
+  notifications       Notification[]
+  notificationPrefs   NotificationPreference[]
+  automationRules     AutomationRule[]
+  guestAccess         GuestAccess[]
+  templates           Template[]
+  integrationTokens   IntegrationToken[]
+  subscription        Subscription?
+  socialAccounts      SocialAccount[]
+  accountSnapshots    AccountAnalyticsSnapshot[]
+  socialPosts         SocialPost[]
+  postTargets         PostTarget[]
+  postAnalytics       PostAnalytics[]
+  competitorProfiles  CompetitorProfile[]
+  competitorSnapshots CompetitorSnapshot[]
 }
 
 model Membership {
-  id             String       @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
   userId         String
-  role           Role         @default(MEMBER)
+  role           Role      @default(MEMBER)
   onboardedAt    DateTime?
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime  @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -122,17 +131,17 @@ model Membership {
 }
 
 model Invite {
-  id             String       @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
   email          String
-  role           Role         @default(MEMBER)
+  role           Role      @default(MEMBER)
   // Only the SHA-256 hash of the token is stored; the raw token appears once in the invite link.
-  tokenHash      String       @unique
-  guestSpaceIds  String[]     @default([])
+  tokenHash      String    @unique
+  guestSpaceIds  String[]  @default([])
   expiresAt      DateTime
   acceptedAt     DateTime?
   invitedById    String
-  createdAt      DateTime     @default(now())
+  createdAt      DateTime  @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   invitedBy    User         @relation("InviteInviter", fields: [invitedById], references: [id], onDelete: Cascade)
@@ -141,12 +150,12 @@ model Invite {
 }
 
 model Workspace {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   organizationId String
   name           String
-  position       Int          @default(0)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  position       Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   spaces       Space[]
@@ -155,16 +164,16 @@ model Workspace {
 }
 
 model Space {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   organizationId String
   workspaceId    String
   name           String
-  position       Int          @default(0)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  position       Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  workspace    Workspace     @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   folders      Folder[]
   lists        List[]
   docs         Doc[]
@@ -175,13 +184,13 @@ model Space {
 }
 
 model Folder {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   organizationId String
   spaceId        String
   name           String
-  position       Int          @default(0)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  position       Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
@@ -192,21 +201,21 @@ model Folder {
 }
 
 model List {
-  id             String       @id @default(cuid())
+  id             String   @id @default(cuid())
   organizationId String
   spaceId        String
   folderId       String? // lists can live directly under a space or inside a folder
   name           String
-  position       Int          @default(0)
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  position       Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
 
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  folder       Folder?      @relation(fields: [folderId], references: [id], onDelete: Cascade)
-  tasks        Task[]
-  customFields CustomField[]
-  docs         Doc[]
+  organization    Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space           Space            @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  folder          Folder?          @relation(fields: [folderId], references: [id], onDelete: Cascade)
+  tasks           Task[]
+  customFields    CustomField[]
+  docs            Doc[]
   automationRules AutomationRule[]
 
   @@index([organizationId])
@@ -253,19 +262,20 @@ model Task {
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
-  organization Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  list         List          @relation(fields: [listId], references: [id], onDelete: Cascade)
-  parentTask   Task?         @relation("Subtasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
-  subtasks     Task[]        @relation("Subtasks")
-  createdBy    User          @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
+  organization Organization       @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  list         List               @relation(fields: [listId], references: [id], onDelete: Cascade)
+  parentTask   Task?              @relation("Subtasks", fields: [parentTaskId], references: [id], onDelete: Cascade)
+  subtasks     Task[]             @relation("Subtasks")
+  createdBy    User               @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Cascade)
   assignees    TaskAssignee[]
   fieldValues  CustomFieldValue[]
-  blocking     TaskDependency[] @relation("Blocker")
-  blockedBy    TaskDependency[] @relation("Blocked")
+  blocking     TaskDependency[]   @relation("Blocker")
+  blockedBy    TaskDependency[]   @relation("Blocked")
   comments     Comment[]
   activityLog  ActivityLogEntry[]
   attachments  Attachment[]
   docs         Doc[]
+  linkedPosts  SocialPost[]
 
   @@index([organizationId])
   @@index([listId, status])
@@ -421,15 +431,15 @@ enum NotificationChannel {
 }
 
 model Notification {
-  id             String   @id @default(cuid())
+  id             String    @id @default(cuid())
   organizationId String
   userId         String
   type           String
   title          String
-  body           String   @default("")
-  linkPath       String   @default("")
+  body           String    @default("")
+  linkPath       String    @default("")
   readAt         DateTime?
-  createdAt      DateTime @default(now())
+  createdAt      DateTime  @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -482,7 +492,6 @@ model AutomationRule {
   @@index([listId, enabled])
 }
 
-
 // ---- Phase 1.5: Client portal, templates, cloud storage ----
 
 model GuestAccess {
@@ -533,7 +542,6 @@ model IntegrationToken {
   @@index([organizationId])
 }
 
-
 // ---- Phase 1.6: Billing ----
 
 enum Plan {
@@ -542,15 +550,159 @@ enum Plan {
 }
 
 model Subscription {
-  id                   String   @id @default(cuid())
-  organizationId       String   @unique
-  plan                 Plan     @default(FREE)
-  status               String   @default("active")
-  stripeCustomerId     String?  @unique
-  stripeSubscriptionId String?  @unique
+  id                   String    @id @default(cuid())
+  organizationId       String    @unique
+  plan                 Plan      @default(FREE)
+  status               String    @default("active")
+  stripeCustomerId     String?   @unique
+  stripeSubscriptionId String?   @unique
   currentPeriodEnd     DateTime?
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+// ---- Phase 2: Social scheduling + analytics ----
+
+enum SocialPlatform {
+  INSTAGRAM
+  FACEBOOK
+  LINKEDIN
+  X
+  TIKTOK
+  PINTEREST
+  YOUTUBE
+  GOOGLE_BUSINESS
+  DEMO
+}
+
+enum PostStatus {
+  DRAFT
+  PENDING_APPROVAL
+  SCHEDULED
+  PUBLISHED
+  FAILED
+}
+
+model SocialAccount {
+  id              String         @id @default(cuid())
+  organizationId  String
+  platform        SocialPlatform
+  handle          String
+  displayName     String
+  // "demo" accounts simulate the full publish/analytics loop without platform APIs;
+  // real accounts store encrypted OAuth tokens once platform apps are approved.
+  isDemo          Boolean        @default(true)
+  encryptedTokens String?
+  createdById     String
+  createdAt       DateTime       @default(now())
+
+  organization Organization               @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User                       @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  snapshots    AccountAnalyticsSnapshot[]
+  targets      PostTarget[]
+
+  @@index([organizationId])
+}
+
+model AccountAnalyticsSnapshot {
+  id              String   @id @default(cuid())
+  organizationId  String
+  socialAccountId String
+  date            DateTime
+  followers       Int
+  engagementRate  Float
+  reach           Int
+  impressions     Int
+
+  organization  Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+
+  @@unique([socialAccountId, date])
+  @@index([organizationId])
+}
+
+model SocialPost {
+  id             String     @id @default(cuid())
+  organizationId String
+  content        String
+  mediaUrl       String?
+  status         PostStatus @default(DRAFT)
+  linkedTaskId   String?
+  createdById    String
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  linkedTask   Task?        @relation(fields: [linkedTaskId], references: [id], onDelete: SetNull)
+  createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  targets      PostTarget[]
+
+  @@index([organizationId, status])
+}
+
+model PostTarget {
+  id              String     @id @default(cuid())
+  organizationId  String
+  postId          String
+  socialAccountId String
+  contentOverride String?
+  scheduledAt     DateTime?
+  publishedAt     DateTime?
+  status          PostStatus @default(DRAFT)
+  externalId      String?
+  errorMessage    String?
+
+  organization  Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  post          SocialPost     @relation(fields: [postId], references: [id], onDelete: Cascade)
+  socialAccount SocialAccount  @relation(fields: [socialAccountId], references: [id], onDelete: Cascade)
+  analytics     PostAnalytics?
+
+  @@unique([postId, socialAccountId])
+  @@index([organizationId, status, scheduledAt])
+}
+
+model PostAnalytics {
+  id             String   @id @default(cuid())
+  organizationId String
+  postTargetId   String   @unique
+  impressions    Int      @default(0)
+  likes          Int      @default(0)
+  comments       Int      @default(0)
+  shares         Int      @default(0)
+  clicks         Int      @default(0)
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  postTarget   PostTarget   @relation(fields: [postTargetId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model CompetitorProfile {
+  id             String         @id @default(cuid())
+  organizationId String
+  platform       SocialPlatform
+  handle         String
+  createdAt      DateTime       @default(now())
+
+  organization Organization         @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  snapshots    CompetitorSnapshot[]
+
+  @@unique([organizationId, platform, handle])
+}
+
+model CompetitorSnapshot {
+  id             String   @id @default(cuid())
+  organizationId String
+  competitorId   String
+  date           DateTime @default(now())
+  followers      Int
+  engagementRate Float
+
+  organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  competitor   CompetitorProfile @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
 }

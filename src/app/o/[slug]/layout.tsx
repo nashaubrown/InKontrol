@@ -81,8 +81,17 @@ export default async function OrgLayout({
             <Link href={`/o/${slug}/inbox`} className="hover:text-primary">
               Inbox{unread > 0 ? ` (${unread})` : ""}
             </Link>
+            <Link href={`/o/${slug}/calendar`} className="hover:text-primary">
+              Calendar
+            </Link>
+            <Link href={`/o/${slug}/reports`} className="hover:text-primary">
+              Reports
+            </Link>
             {!isGuest && (
               <>
+                <Link href={`/o/${slug}/social`} className="hover:text-primary">
+                  Social
+                </Link>
                 <Link href={`/o/${slug}/docs`} className="hover:text-primary">
                   Docs
                 </Link>
