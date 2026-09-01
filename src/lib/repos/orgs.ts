@@ -2,6 +2,7 @@ import { createHash, randomBytes } from "crypto";
 import { Role } from "@prisma/client";
 import { prisma, withOrg } from "@/lib/db";
 import { hasAtLeastRole, type OrgContext } from "@/lib/tenant";
+import { assertWithinLimit } from "@/lib/billing";
 
 const INVITE_TTL_MS = 1000 * 60 * 60 * 48; // 48h, single-use
 
@@ -77,6 +78,12 @@ export async function createInvite(
   if (role === Role.OWNER) throw new Error("Cannot invite as Owner");
   if (role === Role.GUEST && guestSpaceIds.length === 0)
     throw new Error("Pick at least one space for a guest invite");
+  if (role !== Role.GUEST) {
+    const seats = await prisma.membership.count({
+      where: { organizationId: ctx.organizationId, role: { not: "GUEST" } },
+    });
+    await assertWithinLimit(ctx.organizationId, "members", seats + 1);
+  }
   const token = randomBytes(32).toString("base64url");
   const tokenHash = createHash("sha256").update(token).digest("hex");
   await withOrg(ctx.organizationId, async (tx) => {
@@ -95,6 +102,14 @@ export async function createInvite(
         tokenHash,
         expiresAt: new Date(Date.now() + INVITE_TTL_MS),
         invitedById: ctx.userId,
+      },
+    });
+    await tx.activityLogEntry.create({
+      data: {
+        organizationId: ctx.organizationId,
+        actorId: ctx.userId,
+        type: role === Role.GUEST ? "guest_invite_created" : "invite_created",
+        detail: `${email.toLowerCase()} as ${role.toLowerCase()}`,
       },
     });
   });

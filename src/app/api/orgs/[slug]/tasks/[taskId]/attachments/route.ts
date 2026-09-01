@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 import * as collab from "@/lib/repos/collab";
+import { checkRateLimit } from "@/lib/rate-limit";
 import type { OrgContext } from "@/lib/tenant";
 
 async function resolveOrg(slug: string): Promise<OrgContext | null> {
@@ -30,6 +31,9 @@ export async function POST(
   const { slug, taskId } = await params;
   const ctx = await resolveOrg(slug);
   if (!ctx) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!checkRateLimit(`upload:${ctx.userId}`, 30, 60_000)) {
+    return NextResponse.json({ error: "Too many uploads, slow down" }, { status: 429 });
+  }
 
   const form = await req.formData();
   const file = form.get("file");

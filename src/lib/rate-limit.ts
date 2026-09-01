@@ -33,3 +33,18 @@ export function recordLoginFailure(email: string) {
 export function clearLoginFailures(email: string) {
   failures.delete(key(email));
 }
+
+// Generic fixed-window limiter for API routes (per-process; swap for Redis
+// before scaling horizontally).
+const windows = new Map<string, { count: number; startedAt: number }>();
+
+export function checkRateLimit(bucket: string, max: number, windowMs: number): boolean {
+  const now = Date.now();
+  const entry = windows.get(bucket);
+  if (!entry || now - entry.startedAt > windowMs) {
+    windows.set(bucket, { count: 1, startedAt: now });
+    return true;
+  }
+  entry.count += 1;
+  return entry.count <= max;
+}

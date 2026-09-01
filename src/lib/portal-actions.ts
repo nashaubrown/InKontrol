@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { prisma, withOrg } from "@/lib/db";
 import { requireOrg, hasAtLeastRole } from "@/lib/tenant";
+import { logActivity } from "@/lib/repos/collab";
 
 export async function completeOnboardingAction(orgSlug: string) {
   const ctx = await requireOrg(orgSlug);
@@ -37,6 +38,7 @@ export async function updateBrandingAction(orgSlug: string, formData: FormData) 
       brandLogoUrl: parsed.brandLogoUrl || null,
     },
   });
+  await logActivity(ctx, { type: "branding_changed" });
   revalidatePath(`/o/${orgSlug}`);
 }
 
@@ -68,5 +70,6 @@ export async function updateGuestSpacesAction(orgSlug: string, userId: string, f
       })),
     });
   });
+  await logActivity(ctx, { type: "guest_access_changed", detail: userId });
   revalidatePath(`/o/${orgSlug}/members`);
 }

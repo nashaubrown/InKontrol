@@ -4,6 +4,7 @@
 
 import { withOrg } from "@/lib/db";
 import { spaceScope, type OrgContext } from "@/lib/tenant";
+import { assertWithinLimit } from "@/lib/billing";
 
 export function getHierarchy(ctx: OrgContext) {
   return withOrg(ctx.organizationId, (tx) =>
@@ -33,7 +34,11 @@ export function createWorkspace(ctx: OrgContext, name: string) {
   );
 }
 
-export function createSpace(ctx: OrgContext, workspaceId: string, name: string) {
+export async function createSpace(ctx: OrgContext, workspaceId: string, name: string) {
+  const current = await withOrg(ctx.organizationId, (tx) =>
+    tx.space.count({ where: { organizationId: ctx.organizationId } })
+  );
+  await assertWithinLimit(ctx.organizationId, "spaces", current + 1);
   return withOrg(ctx.organizationId, async (tx) => {
     // parent lookup is itself org-scoped, so a foreign workspaceId 404s
     const ws = await tx.workspace.findFirst({

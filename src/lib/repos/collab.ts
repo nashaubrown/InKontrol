@@ -3,6 +3,7 @@
 import type { Prisma } from "@prisma/client";
 import { withOrg } from "@/lib/db";
 import type { OrgContext } from "@/lib/tenant";
+import { assertWithinLimit } from "@/lib/billing";
 
 async function requireTask(
   tx: Prisma.TransactionClient,
@@ -132,6 +133,15 @@ export function addAttachment(
   return withOrg(ctx.organizationId, async (tx) => {
     await requireTask(tx, ctx, taskId);
     if (file.data.length > MAX_ATTACHMENT_BYTES) throw new Error("File is larger than 4 MB");
+    const used = await tx.attachment.aggregate({
+      where: { organizationId: ctx.organizationId },
+      _sum: { size: true },
+    });
+    await assertWithinLimit(
+      ctx.organizationId,
+      "attachmentMb",
+      ((used._sum.size ?? 0) + file.data.length) / 1024 / 1024
+    );
     if (!ALLOWED_TYPES.has(file.contentType)) throw new Error("File type not allowed");
     return tx.attachment.create({
       data: {

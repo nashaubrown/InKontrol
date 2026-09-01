@@ -103,6 +103,7 @@ model Organization {
   guestAccess       GuestAccess[]
   templates         Template[]
   integrationTokens IntegrationToken[]
+  subscription      Subscription?
 }
 
 model Membership {
@@ -530,4 +531,26 @@ model IntegrationToken {
 
   @@unique([userId, organizationId, provider])
   @@index([organizationId])
+}
+
+
+// ---- Phase 1.6: Billing ----
+
+enum Plan {
+  FREE
+  PRO
+}
+
+model Subscription {
+  id                   String   @id @default(cuid())
+  organizationId       String   @unique
+  plan                 Plan     @default(FREE)
+  status               String   @default("active")
+  stripeCustomerId     String?  @unique
+  stripeSubscriptionId String?  @unique
+  currentPeriodEnd     DateTime?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 }
