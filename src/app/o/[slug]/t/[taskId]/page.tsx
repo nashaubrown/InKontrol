@@ -15,6 +15,8 @@ import {
 } from "@/lib/task-actions";
 import { AutoSubmitSelect } from "@/components/auto-submit-select";
 import { AttachmentUpload } from "@/components/attachment-upload";
+import * as p3 from "@/lib/repos/phase3";
+import { startTimerAction, stopTimerAction, addManualEntryAction } from "@/lib/phase3-actions";
 import { addCommentAction, deleteAttachmentAction } from "@/lib/collab-actions";
 import * as collab from "@/lib/repos/collab";
 
@@ -27,11 +29,14 @@ export default async function TaskPage({
   const ctx = await requireOrg(slug);
   const [task, members] = await Promise.all([tasks.getTask(ctx, taskId), listMembers(ctx)]);
   if (!task) notFound();
-  const [comments, attachments, activity] = await Promise.all([
+  const [comments, attachments, activity, timeEntries, runningTimer] = await Promise.all([
     collab.getComments(ctx, taskId),
     collab.getAttachmentsMeta(ctx, taskId),
     collab.getTaskActivity(ctx, taskId),
+    p3.getTimeEntries(ctx, taskId),
+    p3.getRunningTimer(ctx),
   ]);
+  const trackedMin = timeEntries.reduce((n, e) => n + p3.minutesOf(e), 0);
 
   const update = updateTaskFieldsAction.bind(null, slug, taskId);
 
@@ -241,6 +246,62 @@ export default async function TaskPage({
             Add
           </button>
         </form>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-sm font-semibold">
+          Time tracked ({(trackedMin / 60).toFixed(1)}h)
+        </h2>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-sm">
+          {runningTimer?.taskId === taskId ? (
+            <form action={stopTimerAction.bind(null, slug, `/o/${slug}/t/${taskId}`)}>
+              <button className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:opacity-90">
+                Stop timer (running since {runningTimer.startedAt.toISOString().slice(11, 16)} UTC)
+              </button>
+            </form>
+          ) : (
+            <form action={startTimerAction.bind(null, slug, taskId)}>
+              <button className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-white hover:opacity-90">
+                Start timer
+              </button>
+            </form>
+          )}
+          <form
+            action={addManualEntryAction.bind(null, slug, taskId)}
+            className="flex flex-wrap items-center gap-1.5 text-xs"
+          >
+            <input type="date" name="date" required className="rounded border border-border-soft bg-surface px-1.5 py-1" />
+            <input
+              name="minutes"
+              type="number"
+              required
+              placeholder="minutes"
+              className="w-20 rounded border border-border-soft px-1.5 py-1 outline-none focus:border-primary"
+            />
+            <input
+              name="note"
+              placeholder="note"
+              className="w-32 rounded border border-border-soft px-1.5 py-1 outline-none focus:border-primary"
+            />
+            <label className="flex items-center gap-1 text-secondary">
+              <input type="checkbox" name="billable" value="no" /> non-billable
+            </label>
+            <button className="text-primary hover:underline">Log time</button>
+          </form>
+        </div>
+        {timeEntries.length > 0 && (
+          <ul className="mt-2 space-y-0.5 text-xs text-secondary" style={{ fontFeatureSettings: '"tnum"' }}>
+            {timeEntries.slice(0, 8).map((e) => (
+              <li key={e.id}>
+                {(p3.minutesOf(e) / 60).toFixed(1)}h · {e.user.name ?? e.user.email} ·{" "}
+                {e.startedAt.toISOString().slice(0, 10)}
+                {!e.billable && " · non-billable"}
+                {e.note && ` · ${e.note}`}
+                {!e.endedAt && " · running"}
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
 
       <section className="mt-8">

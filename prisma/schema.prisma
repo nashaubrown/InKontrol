@@ -46,6 +46,9 @@ model User {
   integrationTokens IntegrationToken[]
   socialAccounts    SocialAccount[]
   socialPosts       SocialPost[]
+  timeEntries       TimeEntry[]
+  goals             Goal[]
+  forms             Form[]
 }
 
 // Auth.js adapter tables
@@ -113,6 +116,10 @@ model Organization {
   postAnalytics       PostAnalytics[]
   competitorProfiles  CompetitorProfile[]
   competitorSnapshots CompetitorSnapshot[]
+  timeEntries         TimeEntry[]
+  goals               Goal[]
+  keyResults          KeyResult[]
+  forms               Form[]
 }
 
 model Membership {
@@ -178,6 +185,7 @@ model Space {
   lists        List[]
   docs         Doc[]
   guestAccess  GuestAccess[]
+  goals        Goal[]
 
   @@index([organizationId])
   @@index([workspaceId])
@@ -217,6 +225,7 @@ model List {
   customFields    CustomField[]
   docs            Doc[]
   automationRules AutomationRule[]
+  forms           Form[]
 
   @@index([organizationId])
   @@index([spaceId])
@@ -276,6 +285,7 @@ model Task {
   attachments  Attachment[]
   docs         Doc[]
   linkedPosts  SocialPost[]
+  timeEntries  TimeEntry[]
 
   @@index([organizationId])
   @@index([listId, status])
@@ -703,6 +713,78 @@ model CompetitorSnapshot {
 
   organization Organization      @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   competitor   CompetitorProfile @relation(fields: [competitorId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+// ---- Phase 3: Time tracking, goals, forms ----
+
+model TimeEntry {
+  id             String    @id @default(cuid())
+  organizationId String
+  taskId         String
+  userId         String
+  startedAt      DateTime
+  endedAt        DateTime?
+  billable       Boolean   @default(true)
+  note           String    @default("")
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  task         Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, userId, startedAt])
+  @@index([taskId])
+}
+
+model Goal {
+  id             String    @id @default(cuid())
+  organizationId String
+  spaceId        String?
+  title          String
+  targetDate     DateTime?
+  createdById    String
+  createdAt      DateTime  @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space?       @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  keyResults   KeyResult[]
+
+  @@index([organizationId])
+}
+
+model KeyResult {
+  id             String   @id @default(cuid())
+  organizationId String
+  goalId         String
+  title          String
+  type           String   @default("manual") // manual | task_linked
+  currentValue   Float    @default(0)
+  targetValue    Float    @default(100)
+  linkedListId   String? // task_linked: progress = % of DONE tasks in this list
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  goal         Goal         @relation(fields: [goalId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+model Form {
+  id             String   @id @default(cuid())
+  organizationId String
+  listId         String
+  name           String
+  publicId       String   @unique @default(cuid())
+  isPublic       Boolean  @default(true)
+  createdById    String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  list         List         @relation(fields: [listId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
 
   @@index([organizationId])
 }

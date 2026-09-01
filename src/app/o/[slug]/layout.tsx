@@ -67,10 +67,29 @@ export default async function OrgLayout({
         </div>
         <div className="border-b border-border-soft px-4 py-3">
           <p className="text-sm font-medium">{ctx.orgName}</p>
-          <div className="mt-1 flex gap-3 text-xs text-secondary">
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-secondary">
             <Link href={`/o/${slug}`} className="hover:text-primary">
               Overview
             </Link>
+            {!isGuest && (
+              <>
+                <Link href={`/o/${slug}/dashboard`} className="hover:text-primary">
+                  Dashboard
+                </Link>
+                <Link href={`/o/${slug}/time`} className="hover:text-primary">
+                  Time
+                </Link>
+                <Link href={`/o/${slug}/workload`} className="hover:text-primary">
+                  Workload
+                </Link>
+                <Link href={`/o/${slug}/goals`} className="hover:text-primary">
+                  Goals
+                </Link>
+                <Link href={`/o/${slug}/forms`} className="hover:text-primary">
+                  Forms
+                </Link>
+              </>
+            )}
             {!isGuest && (
               <>
                 <Link href={`/o/${slug}/members`} className="hover:text-primary">
