@@ -6,6 +6,7 @@ import { z } from "zod";
 import type { CustomFieldType, TaskPriority, TaskStatus } from "@prisma/client";
 import { requireOrg } from "@/lib/tenant";
 import * as tasks from "@/lib/repos/tasks";
+import { logActivity } from "@/lib/repos/collab";
 
 const titleSchema = z.string().trim().min(1).max(300);
 const statusSchema = z.enum(["TODO", "IN_PROGRESS", "IN_REVIEW", "DONE"]);
@@ -21,12 +22,13 @@ export async function createTaskAction(orgSlug: string, listId: string, formData
   const title = titleSchema.parse(formData.get("title"));
   const status = statusSchema.optional().catch(undefined).parse(formData.get("status") ?? undefined);
   const due = formData.get("dueDate");
-  await tasks.createTask(ctx, {
+  const task = await tasks.createTask(ctx, {
     listId,
     title,
     status: status as TaskStatus | undefined,
     dueDate: typeof due === "string" && due ? new Date(due) : null,
   });
+  await logActivity(ctx, { taskId: task.id, type: "created_task", detail: title.slice(0, 120) });
   revalidatePath(listPath(orgSlug, listId));
 }
 
@@ -60,6 +62,7 @@ export async function setTaskStatusAction(orgSlug: string, taskId: string, statu
   const ctx = await requireOrg(orgSlug);
   const parsed = statusSchema.parse(status);
   const task = await tasks.updateTask(ctx, taskId, { status: parsed as TaskStatus });
+  await logActivity(ctx, { taskId, type: "changed_status", detail: parsed.toLowerCase() });
   revalidatePath(listPath(orgSlug, task.listId));
 }
 

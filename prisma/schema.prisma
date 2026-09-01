@@ -34,6 +34,10 @@ model User {
   accounts     Account[]
   createdTasks  Task[]         @relation("TaskCreator")
   taskAssignees TaskAssignee[]
+  comments      Comment[]
+  activity      ActivityLogEntry[]
+  attachments   Attachment[]
+  docs          Doc[]
 }
 
 // Auth.js adapter tables
@@ -81,6 +85,10 @@ model Organization {
   customFields      CustomField[]
   customFieldValues CustomFieldValue[]
   taskDependencies  TaskDependency[]
+  comments          Comment[]
+  activityLog       ActivityLogEntry[]
+  attachments       Attachment[]
+  docs              Doc[]
 }
 
 model Membership {
@@ -142,6 +150,7 @@ model Space {
   workspace    Workspace    @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
   folders      Folder[]
   lists        List[]
+  docs         Doc[]
 
   @@index([organizationId])
   @@index([workspaceId])
@@ -179,6 +188,7 @@ model List {
   folder       Folder?      @relation(fields: [folderId], references: [id], onDelete: Cascade)
   tasks        Task[]
   customFields CustomField[]
+  docs         Doc[]
 
   @@index([organizationId])
   @@index([spaceId])
@@ -233,6 +243,10 @@ model Task {
   fieldValues  CustomFieldValue[]
   blocking     TaskDependency[] @relation("Blocker")
   blockedBy    TaskDependency[] @relation("Blocked")
+  comments     Comment[]
+  activityLog  ActivityLogEntry[]
+  attachments  Attachment[]
+  docs         Doc[]
 
   @@index([organizationId])
   @@index([listId, status])
@@ -299,4 +313,81 @@ model TaskDependency {
 
   @@unique([blockerId, blockedId])
   @@index([organizationId])
+}
+
+// ---- Phase 1.3: Collaboration ----
+
+model Comment {
+  id             String   @id @default(cuid())
+  organizationId String
+  taskId         String
+  authorId       String
+  body           String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  task         Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  author       User         @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([taskId, createdAt])
+}
+
+model ActivityLogEntry {
+  id             String   @id @default(cuid())
+  organizationId String
+  taskId         String?
+  actorId        String
+  type           String
+  detail         String   @default("")
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  task         Task?        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  actor        User         @relation(fields: [actorId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, createdAt])
+  @@index([taskId, createdAt])
+}
+
+model Attachment {
+  id             String   @id @default(cuid())
+  organizationId String
+  taskId         String
+  uploadedById   String
+  fileName       String
+  contentType    String
+  size           Int
+  sourceType     String   @default("upload") // upload | google_drive | dropbox (Phase 1.5)
+  sourceId       String?
+  data           Bytes?
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  task         Task         @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy   User         @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([taskId])
+}
+
+model Doc {
+  id             String   @id @default(cuid())
+  organizationId String
+  title          String
+  content        Json     @default("{}")
+  spaceId        String?
+  listId         String?
+  taskId         String?
+  createdById    String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  space        Space?       @relation(fields: [spaceId], references: [id], onDelete: SetNull)
+  list         List?        @relation(fields: [listId], references: [id], onDelete: SetNull)
+  task         Task?        @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, updatedAt])
 }

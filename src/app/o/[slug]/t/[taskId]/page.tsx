@@ -14,6 +14,9 @@ import {
   removeDependencyAction,
 } from "@/lib/task-actions";
 import { AutoSubmitSelect } from "@/components/auto-submit-select";
+import { AttachmentUpload } from "@/components/attachment-upload";
+import { addCommentAction, deleteAttachmentAction } from "@/lib/collab-actions";
+import * as collab from "@/lib/repos/collab";
 
 export default async function TaskPage({
   params,
@@ -24,6 +27,11 @@ export default async function TaskPage({
   const ctx = await requireOrg(slug);
   const [task, members] = await Promise.all([tasks.getTask(ctx, taskId), listMembers(ctx)]);
   if (!task) notFound();
+  const [comments, attachments, activity] = await Promise.all([
+    collab.getComments(ctx, taskId),
+    collab.getAttachmentsMeta(ctx, taskId),
+    collab.getTaskActivity(ctx, taskId),
+  ]);
 
   const update = updateTaskFieldsAction.bind(null, slug, taskId);
 
@@ -233,6 +241,76 @@ export default async function TaskPage({
             Add
           </button>
         </form>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-sm font-semibold">Attachments ({attachments.length})</h2>
+        <ul className="mt-2 space-y-1 text-sm">
+          {attachments.map((a) => (
+            <li key={a.id} className="flex items-center gap-2">
+              <a
+                href={`/api/orgs/${slug}/attachments/${a.id}`}
+                className="text-primary hover:underline"
+              >
+                {a.fileName}
+              </a>
+              <span className="text-xs text-secondary">
+                {(a.size / 1024).toFixed(0)} KB · {a.uploadedBy.name ?? a.uploadedBy.email}
+              </span>
+              <form action={deleteAttachmentAction.bind(null, slug, taskId, a.id)}>
+                <button className="text-xs text-secondary hover:text-ink">remove</button>
+              </form>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-2">
+          <AttachmentUpload orgSlug={slug} taskId={taskId} />
+        </div>
+      </section>
+
+      <section className="mt-8">
+        <h2 className="text-sm font-semibold">Comments ({comments.length})</h2>
+        <ul className="mt-2 space-y-3">
+          {comments.map((c) => (
+            <li key={c.id} className="rounded-lg border border-border-soft bg-surface px-4 py-3">
+              <p className="text-xs text-secondary">
+                <span className="font-medium text-ink">{c.author.name ?? c.author.email}</span>{" "}
+                · {c.createdAt.toISOString().slice(0, 16).replace("T", " ")}
+              </p>
+              <p className="mt-1 whitespace-pre-wrap text-sm">{c.body}</p>
+            </li>
+          ))}
+        </ul>
+        <form action={addCommentAction.bind(null, slug, taskId)} className="mt-3">
+          <textarea
+            name="body"
+            required
+            rows={2}
+            placeholder="Write a comment… mention a teammate with @their name"
+            className="w-full rounded-md border border-border-soft bg-surface p-3 text-sm outline-none focus:border-primary"
+          />
+          <button className="mt-2 rounded-md bg-primary px-4 py-1.5 text-sm font-medium text-white hover:opacity-90">
+            Comment
+          </button>
+        </form>
+      </section>
+
+      <section className="mt-8">
+        <details>
+          <summary className="cursor-pointer text-sm font-semibold">
+            Activity ({activity.length})
+          </summary>
+          <ul className="mt-2 space-y-1 text-xs text-secondary">
+            {activity.map((e) => (
+              <li key={e.id}>
+                <span className="font-medium text-ink">{e.actor.name ?? e.actor.email}</span>{" "}
+                {e.type.replaceAll("_", " ")}
+                {e.detail && ` — ${e.detail}`} ·{" "}
+                {e.createdAt.toISOString().slice(0, 16).replace("T", " ")}
+              </li>
+            ))}
+          </ul>
+        </details>
       </section>
 
       <form action={deleteTaskAction.bind(null, slug, taskId)} className="mt-10">

@@ -41,7 +41,6 @@ export function ListView({
         </thead>
         <tbody>
           {tasks.map((t) => {
-            const status = STATUSES.find((s) => s.value === t.status);
             const priority = PRIORITIES.find((p) => p.value === t.priority);
             const overdue = t.dueDate && t.status !== "DONE" && new Date(t.dueDate) < new Date();
             return (
