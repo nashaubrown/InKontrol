@@ -35,6 +35,9 @@ export default async function OrgLayout({
             <Link href={`/o/${slug}/members`} className="hover:text-primary">
               Members
             </Link>
+            <Link href={`/o/${slug}/search`} className="hover:text-primary">
+              Search
+            </Link>
           </div>
         </div>
         <Sidebar orgSlug={slug} workspaces={workspaces} canManage={ctx.role !== "MEMBER"} />

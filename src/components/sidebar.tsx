@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   createWorkspaceAction,
   createSpaceAction,
@@ -42,7 +43,9 @@ export function Sidebar({
                       <p className="text-secondary">{folder.name}</p>
                       <div className="ml-3 border-l border-border-soft pl-2">
                         {folder.lists.map((list) => (
-                          <p key={list.id}>{list.name}</p>
+                          <Link key={list.id} href={`/o/${orgSlug}/l/${list.id}`} className="block hover:text-primary">
+                            {list.name}
+                          </Link>
                         ))}
                         {canManage && (
                           <InlineCreate
@@ -54,7 +57,9 @@ export function Sidebar({
                     </div>
                   ))}
                   {space.lists.map((list) => (
-                    <p key={list.id}>{list.name}</p>
+                    <Link key={list.id} href={`/o/${orgSlug}/l/${list.id}`} className="block hover:text-primary">
+                      {list.name}
+                    </Link>
                   ))}
                   {canManage && (
                     <>
