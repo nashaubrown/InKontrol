@@ -23,6 +23,8 @@ export async function GET(
       orgSlug: slug,
       orgName: membership.organization.name,
       role: membership.role,
+      guestSpaceIds: null,
+      onboarded: true,
     },
     attachmentId
   );

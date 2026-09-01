@@ -3,7 +3,7 @@
 // never from client input) and runs inside withOrg() so Postgres RLS applies.
 
 import { withOrg } from "@/lib/db";
-import type { OrgContext } from "@/lib/tenant";
+import { spaceScope, type OrgContext } from "@/lib/tenant";
 
 export function getHierarchy(ctx: OrgContext) {
   return withOrg(ctx.organizationId, (tx) =>
@@ -12,6 +12,7 @@ export function getHierarchy(ctx: OrgContext) {
       orderBy: { position: "asc" },
       include: {
         spaces: {
+          where: ctx.guestSpaceIds === null ? undefined : { id: { in: ctx.guestSpaceIds } },
           orderBy: { position: "asc" },
           include: {
             folders: {

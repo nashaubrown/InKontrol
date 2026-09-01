@@ -10,7 +10,15 @@ export type OrgContext = {
   orgSlug: string;
   orgName: string;
   role: Role;
+  /** For GUEST members: the space ids they may see. null = unrestricted (non-guests). */
+  guestSpaceIds: string[] | null;
+  onboarded: boolean;
 };
+
+/** Prisma `where` fragment restricting a spaceId column for guests. */
+export function spaceScope(ctx: OrgContext): { in: string[] } | undefined {
+  return ctx.guestSpaceIds === null ? undefined : { in: ctx.guestSpaceIds };
+}
 
 /** Require a signed-in user, or redirect to sign-in. */
 export const requireUser = cache(async () => {
@@ -31,16 +39,27 @@ export const requireOrg = cache(async (orgSlug: string): Promise<OrgContext> => 
     include: { organization: true },
   });
   if (!membership) redirect("/orgs");
+  const guestSpaceIds =
+    membership.role === "GUEST"
+      ? (
+          await prisma.guestAccess.findMany({
+            where: { organizationId: membership.organizationId, userId },
+            select: { spaceId: true },
+          })
+        ).map((g) => g.spaceId)
+      : null;
   return {
     userId,
     organizationId: membership.organizationId,
     orgSlug: membership.organization.slug,
     orgName: membership.organization.name,
     role: membership.role,
+    guestSpaceIds,
+    onboarded: Boolean(membership.onboardedAt),
   };
 });
 
-const roleRank: Record<Role, number> = { OWNER: 3, ADMIN: 2, MEMBER: 1 };
+const roleRank: Record<Role, number> = { OWNER: 3, ADMIN: 2, MEMBER: 1, GUEST: 0 };
 
 export function hasAtLeastRole(ctx: OrgContext, min: Role): boolean {
   return roleRank[ctx.role] >= roleRank[min];

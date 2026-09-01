@@ -1,5 +1,6 @@
 import { requireOrg, hasAtLeastRole } from "@/lib/tenant";
 import { listMembers, listPendingInvites } from "@/lib/repos/orgs";
+import { withOrg } from "@/lib/db";
 import { InviteForm } from "@/components/invite-form";
 
 export default async function MembersPage({
@@ -9,9 +10,16 @@ export default async function MembersPage({
 }) {
   const { slug } = await params;
   const ctx = await requireOrg(slug);
-  const [members, invites] = await Promise.all([
+  const [members, invites, spaces] = await Promise.all([
     listMembers(ctx),
     hasAtLeastRole(ctx, "ADMIN") ? listPendingInvites(ctx) : Promise.resolve([]),
+    withOrg(ctx.organizationId, (tx) =>
+      tx.space.findMany({
+        where: { organizationId: ctx.organizationId },
+        select: { id: true, name: true },
+        orderBy: { position: "asc" },
+      })
+    ),
   ]);
 
   return (
@@ -35,7 +43,7 @@ export default async function MembersPage({
           <p className="mt-1 text-sm text-secondary">
             Invites are single-use links that expire after 48 hours.
           </p>
-          <InviteForm orgSlug={slug} />
+          <InviteForm orgSlug={slug} spaces={spaces} />
           {invites.length > 0 && (
             <>
               <h3 className="mt-6 text-sm font-medium">Pending invites</h3>

@@ -18,6 +18,8 @@ async function resolveOrg(slug: string): Promise<OrgContext | null> {
     orgSlug: slug,
     orgName: membership.organization.name,
     role: membership.role,
+    guestSpaceIds: null,
+    onboarded: true,
   };
 }
 

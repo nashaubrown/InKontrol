@@ -65,24 +65,39 @@ export function listPendingInvites(ctx: OrgContext) {
   );
 }
 
-/** Create a single-use, short-expiry invite. Returns the raw token exactly once. */
-export async function createInvite(ctx: OrgContext, email: string, role: Role) {
+/** Create a single-use, short-expiry invite. Returns the raw token exactly once.
+ *  For GUEST invites, guestSpaceIds lists the spaces the guest may access. */
+export async function createInvite(
+  ctx: OrgContext,
+  email: string,
+  role: Role,
+  guestSpaceIds: string[] = []
+) {
   if (!hasAtLeastRole(ctx, Role.ADMIN)) throw new Error("Admins only");
   if (role === Role.OWNER) throw new Error("Cannot invite as Owner");
+  if (role === Role.GUEST && guestSpaceIds.length === 0)
+    throw new Error("Pick at least one space for a guest invite");
   const token = randomBytes(32).toString("base64url");
   const tokenHash = createHash("sha256").update(token).digest("hex");
-  await withOrg(ctx.organizationId, (tx) =>
-    tx.invite.create({
+  await withOrg(ctx.organizationId, async (tx) => {
+    if (role === Role.GUEST) {
+      const spaces = await tx.space.count({
+        where: { id: { in: guestSpaceIds }, organizationId: ctx.organizationId },
+      });
+      if (spaces !== guestSpaceIds.length) throw new Error("Space not found");
+    }
+    await tx.invite.create({
       data: {
         organizationId: ctx.organizationId,
         email: email.toLowerCase(),
         role,
+        guestSpaceIds: role === Role.GUEST ? guestSpaceIds : [],
         tokenHash,
         expiresAt: new Date(Date.now() + INVITE_TTL_MS),
         invitedById: ctx.userId,
       },
-    })
-  );
+    });
+  });
   return token;
 }
 
@@ -108,6 +123,15 @@ export async function acceptInvite(userId: string, userEmail: string, token: str
       create: { organizationId: invite.organizationId, userId, role: invite.role },
       update: {},
     }),
+    ...(invite.role === "GUEST"
+      ? invite.guestSpaceIds.map((spaceId) =>
+          prisma.guestAccess.upsert({
+            where: { userId_spaceId: { userId, spaceId } },
+            create: { organizationId: invite.organizationId, userId, spaceId },
+            update: {},
+          })
+        )
+      : []),
   ]);
   return invite.organization;
 }

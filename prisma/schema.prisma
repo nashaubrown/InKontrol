@@ -16,7 +16,7 @@ enum Role {
   OWNER
   ADMIN
   MEMBER
-  // GUEST arrives in Phase 1.5 (client portal)
+  GUEST // client portal: scoped to specific spaces via GuestAccess
 }
 
 model User {
@@ -41,6 +41,9 @@ model User {
   notifications     Notification[]
   notificationPrefs NotificationPreference[]
   telegramLink      TelegramLink?
+  guestAccess       GuestAccess[]
+  templates         Template[]
+  integrationTokens IntegrationToken[]
 }
 
 // Auth.js adapter tables
@@ -71,9 +74,11 @@ model Session {
 }
 
 model Organization {
-  id        String   @id @default(cuid())
-  name      String
-  slug      String   @unique
+  id            String  @id @default(cuid())
+  name          String
+  slug          String  @unique
+  brandColor    String?
+  brandLogoUrl  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -95,6 +100,9 @@ model Organization {
   notifications     Notification[]
   notificationPrefs NotificationPreference[]
   automationRules   AutomationRule[]
+  guestAccess       GuestAccess[]
+  templates         Template[]
+  integrationTokens IntegrationToken[]
 }
 
 model Membership {
@@ -102,6 +110,7 @@ model Membership {
   organizationId String
   userId         String
   role           Role         @default(MEMBER)
+  onboardedAt    DateTime?
   createdAt      DateTime     @default(now())
 
   organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
@@ -118,6 +127,7 @@ model Invite {
   role           Role         @default(MEMBER)
   // Only the SHA-256 hash of the token is stored; the raw token appears once in the invite link.
   tokenHash      String       @unique
+  guestSpaceIds  String[]     @default([])
   expiresAt      DateTime
   acceptedAt     DateTime?
   invitedById    String
@@ -157,6 +167,7 @@ model Space {
   folders      Folder[]
   lists        List[]
   docs         Doc[]
+  guestAccess  GuestAccess[]
 
   @@index([organizationId])
   @@index([workspaceId])
@@ -468,4 +479,55 @@ model AutomationRule {
 
   @@index([organizationId])
   @@index([listId, enabled])
+}
+
+
+// ---- Phase 1.5: Client portal, templates, cloud storage ----
+
+model GuestAccess {
+  id             String @id @default(cuid())
+  organizationId String
+  userId         String
+  spaceId        String
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  space        Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, spaceId])
+  @@index([organizationId])
+}
+
+model Template {
+  id             String   @id @default(cuid())
+  organizationId String
+  name           String
+  description    String   @default("")
+  structure      Json // { lists: [{ name, tasks: [{ title, priority?, status? }] }], folders: [...] }
+  createdById    String
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdBy    User         @relation(fields: [createdById], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+}
+
+// OAuth tokens for cloud storage (and later, social platforms). Tokens are
+// AES-256-GCM encrypted at the application level with SECRETS_KEY (security §3);
+// each provider's tokens live in their own row so one leak never exposes others.
+model IntegrationToken {
+  id             String   @id @default(cuid())
+  organizationId String
+  userId         String
+  provider       String // google_drive | dropbox
+  encryptedData  String // AES-GCM ciphertext of the token JSON
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId, provider])
+  @@index([organizationId])
 }

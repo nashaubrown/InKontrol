@@ -263,8 +263,14 @@ export default async function TaskPage({
             </li>
           ))}
         </ul>
-        <div className="mt-2">
+        <div className="mt-2 flex items-center gap-3">
           <AttachmentUpload orgSlug={slug} taskId={taskId} />
+          <Link
+            href={`/o/${slug}/t/${taskId}/import`}
+            className="text-xs text-primary hover:underline"
+          >
+            Import from Drive/Dropbox →
+          </Link>
         </div>
       </section>
 

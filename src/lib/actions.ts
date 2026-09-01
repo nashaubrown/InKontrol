@@ -104,11 +104,16 @@ export async function createInviteAction(
 ): Promise<(ActionState & { inviteUrl?: string }) | undefined> {
   const ctx = await requireOrg(orgSlug);
   const parsed = z
-    .object({ email: emailSchema, role: z.enum(["ADMIN", "MEMBER"]) })
+    .object({ email: emailSchema, role: z.enum(["ADMIN", "MEMBER", "GUEST"]) })
     .safeParse({ email: formData.get("email"), role: formData.get("role") });
   if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const guestSpaceIds = formData
+    .getAll("guestSpaceIds")
+    .map(String)
+    .filter((s) => /^[a-z0-9]+$/i.test(s))
+    .slice(0, 50);
   try {
-    const token = await orgs.createInvite(ctx, parsed.data.email, parsed.data.role as Role);
+    const token = await orgs.createInvite(ctx, parsed.data.email, parsed.data.role as Role, guestSpaceIds);
     const base = process.env.APP_URL ?? "http://localhost:3000";
     revalidatePath(`/o/${orgSlug}/members`);
     return { inviteUrl: `${base}/invite/${token}` };

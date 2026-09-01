@@ -5,7 +5,7 @@
 
 import type { TaskStatus, TaskPriority, CustomFieldType, Prisma } from "@prisma/client";
 import { withOrg } from "@/lib/db";
-import type { OrgContext } from "@/lib/tenant";
+import { spaceScope, type OrgContext } from "@/lib/tenant";
 
 const taskInclude = {
   assignees: { include: { user: { select: { id: true, name: true, email: true } } } },
@@ -16,7 +16,7 @@ const taskInclude = {
 export function getList(ctx: OrgContext, listId: string) {
   return withOrg(ctx.organizationId, (tx) =>
     tx.list.findFirst({
-      where: { id: listId, organizationId: ctx.organizationId },
+      where: { id: listId, organizationId: ctx.organizationId, spaceId: spaceScope(ctx) },
       include: { space: true, folder: true, customFields: { orderBy: { createdAt: "asc" } } },
     })
   );
@@ -25,7 +25,12 @@ export function getList(ctx: OrgContext, listId: string) {
 export function getTasksForList(ctx: OrgContext, listId: string) {
   return withOrg(ctx.organizationId, (tx) =>
     tx.task.findMany({
-      where: { organizationId: ctx.organizationId, listId, parentTaskId: null },
+      where: {
+        organizationId: ctx.organizationId,
+        listId,
+        parentTaskId: null,
+        list: { spaceId: spaceScope(ctx) },
+      },
       orderBy: [{ position: "asc" }, { createdAt: "asc" }],
       include: taskInclude,
     })
@@ -35,7 +40,7 @@ export function getTasksForList(ctx: OrgContext, listId: string) {
 export function getTask(ctx: OrgContext, taskId: string) {
   return withOrg(ctx.organizationId, (tx) =>
     tx.task.findFirst({
-      where: { id: taskId, organizationId: ctx.organizationId },
+      where: { id: taskId, organizationId: ctx.organizationId, list: { spaceId: spaceScope(ctx) } },
       include: {
         ...taskInclude,
         list: { include: { space: true, customFields: { orderBy: { createdAt: "asc" } } } },
@@ -213,6 +218,7 @@ export function searchTasks(ctx: OrgContext, query: string) {
     tx.task.findMany({
       where: {
         organizationId: ctx.organizationId,
+        list: { spaceId: spaceScope(ctx) },
         OR: [
           { title: { contains: query, mode: "insensitive" } },
           { description: { contains: query, mode: "insensitive" } },
@@ -233,6 +239,7 @@ export function getTasksForCalendar(ctx: OrgContext, listId: string, from: Date,
         organizationId: ctx.organizationId,
         listId,
         dueDate: { gte: from, lt: to },
+        list: { spaceId: spaceScope(ctx) },
       },
       orderBy: { dueDate: "asc" },
       include: taskInclude,
