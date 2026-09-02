@@ -27,14 +27,16 @@ export default async function OrgOverviewPage({
         <div className="mt-6 rounded-lg border border-border-soft bg-surface p-6">
           <h2 className="font-semibold">Set up your first client</h2>
           <p className="mt-2 text-sm text-secondary">
-            Use the sidebar to add a space for each client, folders for their projects, and
-            lists for the work inside them. Tasks arrive in the next release.
+            Under <strong>Spaces</strong> in the sidebar, add a space for each client, folders for
+            their projects, and lists for the work inside them — then open a list to start adding
+            tasks.
           </p>
         </div>
       ) : (
-        <p className="mt-3 text-sm text-secondary">
-          {spaceCount} {spaceCount === 1 ? "space" : "spaces"}, {listCount}{" "}
-          {listCount === 1 ? "list" : "lists"}. Tasks arrive in the next release.
+        <p className="mt-2 text-sm text-secondary">
+          {spaceCount} {spaceCount === 1 ? "space" : "spaces"} · {listCount}{" "}
+          {listCount === 1 ? "list" : "lists"}. Open a list in the sidebar to work on tasks, or
+          check the Dashboard for the big picture.
         </p>
       )}
     </div>

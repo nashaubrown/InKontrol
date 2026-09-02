@@ -15,11 +15,23 @@ export default async function AiPage({ params }: { params: Promise<{ slug: strin
   return (
     <div className="animate-settle max-w-2xl">
       <h1 className="text-2xl font-semibold tracking-tight">AI content assistant</h1>
+      <p className="mt-1 text-sm text-secondary">
+        Caption ideas, hashtags, and rewrites that match how your agency writes.
+      </p>
       {!aiConfigured() ? (
-        <p className="mt-3 rounded-md bg-accent-warm/40 px-3 py-2 text-sm">
-          Add <code>ANTHROPIC_API_KEY</code> to the environment to turn on caption suggestions,
-          hashtags, and brand-voice rewriting.
-        </p>
+        <div className="mt-6 flex items-start gap-3 rounded-lg border border-accent-warm bg-accent-warm/20 p-4 text-sm">
+          <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-accent-warm/70 text-xs">
+            !
+          </span>
+          <div>
+            <p className="font-medium">Not connected yet</p>
+            <p className="mt-0.5 text-secondary">
+              Add <code className="rounded bg-surface px-1">ANTHROPIC_API_KEY</code> to your Vercel
+              environment variables and redeploy to turn on caption suggestions, hashtags, and
+              brand-voice rewriting.
+            </p>
+          </div>
+        </div>
       ) : (
         <AiAssistant orgSlug={slug} />
       )}

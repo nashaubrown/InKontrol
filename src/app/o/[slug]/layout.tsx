@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { requireOrg } from "@/lib/tenant";
 import { getHierarchy } from "@/lib/repos/hierarchy";
-import { withOrg } from "@/lib/db";
+import { withOrg, prisma } from "@/lib/db";
 import { signOutAction } from "@/lib/actions";
 import { Sidebar } from "@/components/sidebar";
+import { AppNav } from "@/components/app-nav";
 import { GuestWelcome } from "@/components/guest-welcome";
-import { prisma } from "@/lib/db";
 
 export default async function OrgLayout({
   children,
@@ -30,7 +30,7 @@ export default async function OrgLayout({
     );
   }
 
-  const [workspaces, unread, org] = await Promise.all([
+  const [workspaces, unread, org, user] = await Promise.all([
     getHierarchy(ctx),
     withOrg(ctx.organizationId, (tx) =>
       tx.notification.count({
@@ -40,6 +40,10 @@ export default async function OrgLayout({
     prisma.organization.findUnique({
       where: { id: ctx.organizationId },
       select: { brandColor: true, brandLogoUrl: true },
+    }),
+    prisma.user.findUnique({
+      where: { id: ctx.userId },
+      select: { name: true, email: true },
     }),
   ]);
   const isGuest = ctx.role === "GUEST";
@@ -51,94 +55,61 @@ export default async function OrgLayout({
 
   return (
     <div className="flex min-h-screen" style={brandStyle}>
-      <aside className="flex w-72 flex-col border-r border-border-soft bg-surface">
-        <div className="flex items-center justify-between border-b border-border-soft px-4 py-3">
+      <aside className="sticky top-0 flex h-screen w-64 shrink-0 flex-col border-r border-border-soft bg-surface">
+        <div className="flex items-center gap-2 px-5 pb-3 pt-5">
           {isGuest && org?.brandLogoUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={org.brandLogoUrl} alt={ctx.orgName} className="h-6 max-w-40 object-contain" />
           ) : (
-            <Link href="/orgs" className="font-semibold tracking-tight text-primary">
+            <Link href="/orgs" className="text-lg font-semibold tracking-tight text-primary">
               {isGuest ? ctx.orgName : "InKontrol"}
             </Link>
           )}
+        </div>
+        {!isGuest && (
+          <Link
+            href="/orgs"
+            className="mx-3 mb-1 flex items-center justify-between rounded-md border border-border-soft bg-canvas px-3 py-2 text-[13px] font-medium hover:border-primary"
+            title="Switch organization"
+          >
+            <span className="truncate">{ctx.orgName}</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-3.5 w-3.5 text-secondary">
+              <path d="m8 9 4-4 4 4m-8 6 4 4 4-4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </Link>
+        )}
+
+        <div className="flex-1 overflow-y-auto">
+          <AppNav orgSlug={slug} isGuest={isGuest} unread={unread} />
+          <div className="mx-3 my-2 border-t border-border-soft" />
+          <p className="px-5 pb-1 text-[11px] font-medium uppercase tracking-wider text-secondary/80">
+            Spaces
+          </p>
+          <Sidebar orgSlug={slug} workspaces={workspaces} canManage={ctx.role !== "GUEST"} />
+        </div>
+
+        <div className="flex items-center justify-between border-t border-border-soft px-5 py-3">
+          <div className="min-w-0">
+            <p className="truncate text-[13px] font-medium">{user?.name ?? user?.email}</p>
+            <p className="truncate text-[11px] text-secondary">{user?.email}</p>
+          </div>
           <form action={signOutAction}>
-            <button className="text-xs text-secondary hover:text-ink">Sign out</button>
+            <button
+              className="rounded-md p-1.5 text-secondary hover:bg-canvas hover:text-ink"
+              title="Sign out"
+              aria-label="Sign out"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-4 w-4">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4m7 14 5-5-5-5m5 5H9" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
           </form>
         </div>
-        <div className="border-b border-border-soft px-4 py-3">
-          <p className="text-sm font-medium">{ctx.orgName}</p>
-          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-xs text-secondary">
-            <Link href={`/o/${slug}`} className="hover:text-primary">
-              Overview
-            </Link>
-            {!isGuest && (
-              <>
-                <Link href={`/o/${slug}/dashboard`} className="hover:text-primary">
-                  Dashboard
-                </Link>
-                <Link href={`/o/${slug}/time`} className="hover:text-primary">
-                  Time
-                </Link>
-                <Link href={`/o/${slug}/workload`} className="hover:text-primary">
-                  Workload
-                </Link>
-                <Link href={`/o/${slug}/goals`} className="hover:text-primary">
-                  Goals
-                </Link>
-                <Link href={`/o/${slug}/forms`} className="hover:text-primary">
-                  Forms
-                </Link>
-              </>
-            )}
-            {!isGuest && (
-              <>
-                <Link href={`/o/${slug}/members`} className="hover:text-primary">
-                  Members
-                </Link>
-              </>
-            )}
-            <Link href={`/o/${slug}/inbox`} className="hover:text-primary">
-              Inbox{unread > 0 ? ` (${unread})` : ""}
-            </Link>
-            <Link href={`/o/${slug}/calendar`} className="hover:text-primary">
-              Calendar
-            </Link>
-            <Link href={`/o/${slug}/reports`} className="hover:text-primary">
-              Reports
-            </Link>
-            {!isGuest && (
-              <>
-                <Link href={`/o/${slug}/social`} className="hover:text-primary">
-                  Social
-                </Link>
-                <Link href={`/o/${slug}/social/ai`} className="hover:text-primary">
-                  AI
-                </Link>
-                <Link href={`/o/${slug}/marketing`} className="hover:text-primary">
-                  Marketing
-                </Link>
-                <Link href={`/o/${slug}/docs`} className="hover:text-primary">
-                  Docs
-                </Link>
-                <Link href={`/o/${slug}/activity`} className="hover:text-primary">
-                  Activity
-                </Link>
-                <Link href={`/o/${slug}/templates`} className="hover:text-primary">
-                  Templates
-                </Link>
-                <Link href={`/o/${slug}/settings`} className="hover:text-primary">
-                  Settings
-                </Link>
-              </>
-            )}
-            <Link href={`/o/${slug}/search`} className="hover:text-primary">
-              Search
-            </Link>
-          </div>
-        </div>
-        <Sidebar orgSlug={slug} workspaces={workspaces} canManage={ctx.role !== "GUEST"} />
       </aside>
-      <main className="flex-1 px-8 py-8">{children}</main>
+
+      <main className="min-w-0 flex-1">
+        <div className="mx-auto w-full max-w-4xl px-8 py-10">{children}</div>
+      </main>
     </div>
   );
 }
